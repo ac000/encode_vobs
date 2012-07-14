@@ -1,0 +1,16 @@
+encode_vobs
+===========
+
+A simple job scheduler to encode DVD VOB files into Ogg Theora.
+
+It forks/execs (3) ffmpeg2theora processes at a time.
+
+I use 3 as that is 1 less than the number of cores I have. It runs the encoder
+proccesses at nice +10.
+
+Usage is like:
+
+    $ cd /path/to/vobs
+    $ encode_vobs file1.vob ...
+
+Change the NR_WORKERS define to suit your situation.
