@@ -14,3 +14,6 @@ Usage is like:
     $ encode_vobs file1.vob ...
 
 Change the NR_WORKERS define to suit your situation.
+
+
+This project is licensed under the GNU GPLv2.
