@@ -20,6 +20,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <sys/resource.h>
+#include <sys/sysinfo.h>
 #include <signal.h>
 #include <limits.h>
 
@@ -33,17 +34,18 @@
 		printf("%s: " fmt, timestamp, ##__VA_ARGS__); \
 	} while (0)
 
-#define NR_WORKERS	3
+#define NR_WORKERS	nr_workers
 #define PROCESS_EXITED	-2
 
 static int files_to_process;
 static int files_processed;
+static int nr_workers;
 
 struct processing {
 	pid_t pid;
 	char file[NAME_MAX + 1];
 };
-struct processing processing[NR_WORKERS];
+struct processing *processing;
 
 static void reaper(int signo)
 {
@@ -129,6 +131,11 @@ int main(int argc, char **argv)
 	sa.sa_flags = SA_RESTART | SA_NODEFER;
 	sigaction(SIGCHLD, &sa, NULL);
 
+	nr_workers = get_nprocs() - 1;
+	if (nr_workers == 0)
+		nr_workers = 1;
+	loginfo("Using %d cores\n", NR_WORKERS);
+	processing = calloc(NR_WORKERS, sizeof(struct processing));
 	for (i = 0; i < NR_WORKERS; i++) {
                 processing[i].pid = -1;
                 processing[i].file[0] = '\0';
@@ -153,5 +160,6 @@ int main(int argc, char **argv)
 		files_in_progress++;
 	}
 
+	free(processing);
 	exit(EXIT_SUCCESS);
 }
