@@ -27,11 +27,9 @@
 #define loginfo(fmt, ...) \
 	do { \
 		time_t t = time(NULL); \
-		struct tm *tm; \
-		char timestamp[10]; \
-		tm = localtime(&t); \
-		strftime(timestamp, sizeof(timestamp), "%H:%M:%S", tm); \
-		printf("%s: " fmt, timestamp, ##__VA_ARGS__); \
+		struct tm *tm = localtime(&t); \
+		printf("%02d:%02d:%02d: " fmt, \
+			tm->tm_hour, tm->tm_min, tm->tm_sec, ##__VA_ARGS__); \
 	} while (0)
 
 #define NR_WORKERS	nr_workers
