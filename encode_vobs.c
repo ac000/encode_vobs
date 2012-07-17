@@ -43,7 +43,7 @@ static int nr_workers;
 
 struct processing {
 	pid_t pid;
-	char file[NAME_MAX + 1];
+	char file[PATH_MAX];
 };
 struct processing *processing;
 
@@ -83,7 +83,7 @@ static void process_file(const char *file)
 	int fd;
 	int i;
 	int ret;
-	char ogg[NAME_MAX + 1] = "\0";
+	char ogg[PATH_MAX] = "\0";
 	struct stat st;
 
 	strncpy(ogg, file, strlen(file) - 3);
