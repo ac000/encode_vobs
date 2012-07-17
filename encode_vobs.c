@@ -122,7 +122,7 @@ int main(int argc, char **argv)
 	int i;
 	int files_in_progress = 0;
 	struct sigaction sa;
-	
+
 	if (argc < 2)
 		exit(EXIT_FAILURE);
 
