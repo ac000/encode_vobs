@@ -1,7 +1,7 @@
 /*
  * encode_vobs.c - Simple job scheduler to encode vob dvd rips
  *
- * Copyright (C) 2012	Andrew Clayton <andrew@digital-domain.net>
+ * Copyright (C) 2012 - 2013	Andrew Clayton <andrew@digital-domain.net>
  *
  * Released under the GNU General Public License version 2
  * See COPYING
@@ -35,6 +35,19 @@
 #define NR_WORKERS	nr_workers
 #define PROCESS_EXITED	-2
 
+#define CREATE_THEORA(infile, outfile) \
+	do { \
+		execlp("ffmpeg2theora", "ffmpeg2theora", "-o", outfile, \
+				"--no-skeleton", "-v", "7", "-a", "3", infile, \
+				(char *)NULL); \
+	} while (0)
+#define CREATE_WEBM(infile, outfile) \
+	do { \
+		execlp("ffmpeg", "ffmpeg", "-i", infile, \
+				"-deinterlace", "-b", "1200k", "-ab", "112k", \
+				outfile, (char *)NULL); \
+	} while (0)
+
 static int files_to_process;
 static int files_processed;
 static int nr_workers;
@@ -44,6 +57,13 @@ struct processing {
 	char file[PATH_MAX];
 };
 struct processing *processing;
+
+static void disp_usage(void)
+{
+	fprintf(stderr, "Usage: encode_vobs -P <theora|webm> file1 "
+			" ...\n");
+	exit(EXIT_FAILURE);
+}
 
 static void reaper(int signo)
 {
@@ -75,24 +95,27 @@ static void do_processed(void)
 	}
 }
 
-static void process_file(const char *file)
+static void process_file(const char *file, const char *profile)
 {
 	pid_t pid;
 	int fd;
 	int i;
 	int ret;
-	char ogg[PATH_MAX] = "\0";
+	char outfile[PATH_MAX] = "\0";
 	struct stat st;
 
-	strncpy(ogg, file, strlen(file) - 3);
-	strcat(ogg, "ogv");
+	strncpy(outfile, file, strlen(file) - 3);
+	if (strcmp(profile, "theora") == 0)
+		strcat(outfile, "ogv");
+	else
+		strcat(outfile, "webm");
 
-	ret = stat(ogg, &st);
+	ret = stat(outfile, &st);
 	if (ret == 0) {
-		loginfo("File %s exists, skipping\n", ogg);
+		loginfo("File %s exists, skipping\n", outfile);
 		return;
 	}
-	loginfo("Processing : %s -> %s\n", file, ogg);
+	loginfo("Processing : %s -> %s\n", file, outfile);
 
 	fd = open("/dev/null", O_RDONLY);
 	pid = fork();
@@ -100,16 +123,17 @@ static void process_file(const char *file)
 		setpriority(PRIO_PROCESS, 0, 10);
 		/* Send stderr to /dev/null */
 		dup2(fd, STDERR_FILENO);
-		execlp("ffmpeg2theora", "ffmpeg2theora", "-o", ogg,
-		       "--no-skeleton", "-v", "7", "-a", "3", file,
-		       (char *)NULL);
+		if (strcmp(profile, "theora") == 0)
+			CREATE_THEORA(file, outfile);
+		else
+			CREATE_WEBM(file, outfile);
 	}
 	close(fd);
 
 	for (i = 0; i < NR_WORKERS; i++) {
 		if (processing[i].pid == -1) {
 			processing[i].pid = pid;
-			strcpy(processing[i].file, ogg);
+			strcpy(processing[i].file, outfile);
 			break;
 		}
 	}
@@ -118,11 +142,26 @@ static void process_file(const char *file)
 int main(int argc, char **argv)
 {
 	int i;
+	int opt;
 	int files_in_progress = 0;
 	struct sigaction sa;
+	const char *profile = '\0';
 
-	if (argc < 2)
-		exit(EXIT_FAILURE);
+	while ((opt = getopt(argc, argv, "P:")) != -1) {
+		switch (opt) {
+		case 'P':
+			if (strcmp(optarg, "theora") != 0 &&
+			    strcmp(optarg, "webm") != 0)
+				disp_usage();
+			else
+				profile = optarg;
+			break;
+		}
+	}
+	if (optind >= argc)
+		disp_usage();
+
+	loginfo("Using profile: %s\n", profile);
 
 	sigemptyset(&sa.sa_mask);
 	sa.sa_handler = reaper;
@@ -139,8 +178,8 @@ int main(int argc, char **argv)
                 processing[i].file[0] = '\0';
         }
 
-	files_to_process = argc - 1;
-	i = 1; /* argv[1] */
+	files_to_process = argc - optind;
+	i = optind;
 	for (;;) {
 		if (i == argc) {
 			while (files_processed < files_to_process) {
@@ -153,7 +192,7 @@ int main(int argc, char **argv)
 			files_in_progress--;
 			do_processed();
 		}
-		process_file(argv[i]);
+		process_file(argv[i], profile);
 		i++;
 		files_in_progress++;
 	}
