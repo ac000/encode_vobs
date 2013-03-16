@@ -147,7 +147,7 @@ int main(int argc, char **argv)
 	struct sigaction sa;
 	const char *profile = '\0';
 
-	while ((opt = getopt(argc, argv, "P:")) != -1) {
+	while ((opt = getopt(argc, argv, "P:h")) != -1) {
 		switch (opt) {
 		case 'P':
 			if (strcmp(optarg, "theora") != 0 &&
@@ -155,6 +155,9 @@ int main(int argc, char **argv)
 				disp_usage();
 			else
 				profile = optarg;
+			break;
+		case 'h':
+			disp_usage();
 			break;
 		}
 	}
