@@ -44,8 +44,8 @@
 #define CREATE_WEBM(infile, outfile) \
 	do { \
 		execlp("ffmpeg", "ffmpeg", "-i", infile, \
-				"-deinterlace", "-b", "1200k", "-ab", "112k", \
-				outfile, (char *)NULL); \
+				"-filter:v", "yadif" "-b:v", "1200k", "-ab", \
+				"112k", outfile, (char *)NULL); \
 	} while (0)
 
 static int files_to_process;
