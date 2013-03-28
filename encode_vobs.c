@@ -60,7 +60,7 @@ struct processing *processing;
 
 static void disp_usage(void)
 {
-	fprintf(stderr, "Usage: encode_vobs -P <theora|webm> file1 "
+	fprintf(stderr, "Usage: encode_vobs -P <theora|webm> [-t tasks] file1 "
 			" ...\n");
 	exit(EXIT_FAILURE);
 }
@@ -147,7 +147,7 @@ int main(int argc, char **argv)
 	struct sigaction sa;
 	const char *profile = '\0';
 
-	while ((opt = getopt(argc, argv, "P:h")) != -1) {
+	while ((opt = getopt(argc, argv, "P:ht:")) != -1) {
 		switch (opt) {
 		case 'P':
 			if (strcmp(optarg, "theora") != 0 &&
@@ -158,6 +158,9 @@ int main(int argc, char **argv)
 			break;
 		case 'h':
 			disp_usage();
+			break;
+		case 't':
+			nr_workers = atoi(optarg);
 			break;
 		}
 	}
@@ -171,7 +174,8 @@ int main(int argc, char **argv)
 	sa.sa_flags = SA_RESTART | SA_NODEFER;
 	sigaction(SIGCHLD, &sa, NULL);
 
-	nr_workers = get_nprocs() - 1;
+	if (nr_workers == 0)
+		nr_workers = get_nprocs() - 1;
 	if (nr_workers == 0)
 		nr_workers = 1;
 	loginfo("Using %d cores\n", NR_WORKERS);
