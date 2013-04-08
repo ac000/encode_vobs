@@ -56,7 +56,7 @@ struct processing {
 	pid_t pid;
 	char file[PATH_MAX];
 };
-struct processing *processing;
+static struct processing *processing;
 
 static void disp_usage(void)
 {
