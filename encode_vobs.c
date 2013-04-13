@@ -164,7 +164,7 @@ int main(int argc, char **argv)
 			break;
 		}
 	}
-	if (optind >= argc)
+	if (optind >= argc || !profile)
 		disp_usage();
 
 	loginfo("Using profile: %s\n", profile);
