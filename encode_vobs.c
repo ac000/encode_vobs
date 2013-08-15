@@ -35,19 +35,6 @@
 #define NR_WORKERS	nr_workers
 #define PROCESS_EXITED	-2
 
-#define CREATE_THEORA(infile, outfile) \
-	do { \
-		execlp("ffmpeg2theora", "ffmpeg2theora", "-o", outfile, \
-				"--no-skeleton", "-v", "7", "-a", "3", infile, \
-				(char *)NULL); \
-	} while (0)
-#define CREATE_WEBM(infile, outfile) \
-	do { \
-		execlp("ffmpeg", "ffmpeg", "-i", infile, \
-				"-filter:v", "yadif", "-b:v", "1200k", "-ab", \
-				"112k", outfile, (char *)NULL); \
-	} while (0)
-
 static int files_to_process;
 static int files_processed;
 static int nr_workers;
@@ -57,6 +44,19 @@ struct processing {
 	char file[PATH_MAX];
 };
 static struct processing *processing;
+
+static void create_theora(const char *infile, const char *outfile)
+{
+	execlp("ffmpeg2theora", "ffmpeg2theora", "-o", outfile,
+			"--no-skeleton", "-v", "7", "-a", "3", infile,
+			(char *)NULL);
+}
+
+static void create_webm(const char *infile, const char *outfile)
+{
+	execlp("ffmpeg", "ffmpeg", "-i", infile, "-filter:v", "yadif", "-b:v",
+			"1200k", "-ab", "112k", outfile, (char *)NULL);
+}
 
 static void disp_usage(void)
 {
@@ -124,9 +124,9 @@ static void process_file(const char *file, const char *profile)
 		/* Send stderr to /dev/null */
 		dup2(fd, STDERR_FILENO);
 		if (strcmp(profile, "theora") == 0)
-			CREATE_THEORA(file, outfile);
+			create_theora(file, outfile);
 		else
-			CREATE_WEBM(file, outfile);
+			create_webm(file, outfile);
 	}
 	close(fd);
 
