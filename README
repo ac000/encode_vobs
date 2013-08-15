@@ -1,8 +1,8 @@
 encode_vobs
 ===========
 
-A simple job scheduler to encode DVD VOB files into Ogg Theora or WebM
-format.
+A simple job scheduler to encode DVD VOB files into Ogg Theora, WebM or
+Matroska (containing VP8 + AC3) format.
 
 It creates nr cores - 1 (over-ridable with the -t option),
 ffmpeg2theora processes at a time, running them at nice +10.
@@ -12,6 +12,11 @@ Usage is like:
     $ cd /path/to/vobs
     $ encode_vobs -P webm file1.vob ...
 
-to encode to WebM format, specify -P theora for Ogg Theora format.
+to encode to WebM format, specify -P theora for Ogg Theora format and -P mkv
+for Matroska.
+
+When using the mkv profile, it expects a VOB containing the video as the
+first track and the audio you want as the second (extra audio tracks will be
+ignored).
 
 This project is licensed under the GNU GPLv2.

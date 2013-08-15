@@ -58,10 +58,36 @@ static void create_webm(const char *infile, const char *outfile)
 			"1200k", "-ab", "112k", outfile, (char *)NULL);
 }
 
+static void create_mkv(const char *infile, const char *outfile)
+{
+	pid_t pid;
+	char webm[PATH_MAX];
+
+	snprintf(webm, strlen(outfile) - 3, "%s", outfile);
+	if (strlen(webm) > PATH_MAX - 6 /* .webm + \0 */) {
+		loginfo("ERROR: Filename '%s' + '.webm' too long.\n", webm);
+		_exit(EXIT_FAILURE);
+	}
+	strcat(webm, ".webm");
+
+	/*
+	 * We need to run the WebM encode in a child process so we can then
+	 * carry on and do the mkvmerge afterwards.
+	 */
+	pid = fork();
+	if (pid == 0)
+		create_webm(infile, webm);
+	pause();
+
+	loginfo("Doing mkvmerge (%s)\n", outfile);
+	execlp("mkvmerge", "mkvmerge", "-q", "-o", outfile, "-A", webm, "-D",
+			"-a", "1", infile, (char *)NULL);
+}
+
 static void disp_usage(void)
 {
-	fprintf(stderr, "Usage: encode_vobs -P <theora|webm> [-t tasks] file1 "
-			" ...\n");
+	fprintf(stderr, "Usage: encode_vobs -P <theora|webm|mkv> [-t tasks] "
+			"file1 ...\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -107,8 +133,10 @@ static void process_file(const char *file, const char *profile)
 	strncpy(outfile, file, strlen(file) - 3);
 	if (strcmp(profile, "theora") == 0)
 		strcat(outfile, "ogv");
-	else
+	else if (strcmp(profile, "webm") == 0)
 		strcat(outfile, "webm");
+	else
+		strcat(outfile, "mkv");
 
 	ret = stat(outfile, &st);
 	if (ret == 0) {
@@ -125,8 +153,10 @@ static void process_file(const char *file, const char *profile)
 		dup2(fd, STDERR_FILENO);
 		if (strcmp(profile, "theora") == 0)
 			create_theora(file, outfile);
-		else
+		else if (strcmp(profile, "webm") == 0)
 			create_webm(file, outfile);
+		else
+			create_mkv(file, outfile);
 	}
 	close(fd);
 
@@ -151,7 +181,8 @@ int main(int argc, char **argv)
 		switch (opt) {
 		case 'P':
 			if (strcmp(optarg, "theora") != 0 &&
-			    strcmp(optarg, "webm") != 0)
+			    strcmp(optarg, "webm") != 0 &&
+			    strcmp(optarg, "mkv") != 0)
 				disp_usage();
 			else
 				profile = optarg;
