@@ -35,6 +35,9 @@
 #define NR_WORKERS	nr_workers
 #define PROCESS_EXITED	-2
 
+#define ENC_NICE	enc_nice
+
+static int enc_nice = 10;
 static int files_to_process;
 static int files_processed;
 static int nr_workers;
@@ -87,7 +90,10 @@ static void create_mkv(const char *infile, const char *outfile)
 static void disp_usage(void)
 {
 	fprintf(stderr, "Usage: encode_vobs -P <theora|webm|mkv> [-t tasks] "
-			"file1 ...\n");
+			"[-n nice] file1 ...\n\n");
+	fprintf(stderr, "nice is the priority to run the encode processes "
+			"at.\nIt should be a value between 0 and 19. It "
+			"defaults to 10.\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -148,7 +154,7 @@ static void process_file(const char *file, const char *profile)
 	fd = open("/dev/null", O_RDONLY);
 	pid = fork();
 	if (pid == 0) { /* child */
-		setpriority(PRIO_PROCESS, 0, 10);
+		setpriority(PRIO_PROCESS, 0, ENC_NICE);
 		/* Send stderr to /dev/null */
 		dup2(fd, STDERR_FILENO);
 		if (strcmp(profile, "theora") == 0)
@@ -177,7 +183,7 @@ int main(int argc, char **argv)
 	struct sigaction sa;
 	const char *profile = '\0';
 
-	while ((opt = getopt(argc, argv, "P:ht:")) != -1) {
+	while ((opt = getopt(argc, argv, "P:hn:t:")) != -1) {
 		switch (opt) {
 		case 'P':
 			if (strcmp(optarg, "theora") != 0 &&
@@ -189,6 +195,11 @@ int main(int argc, char **argv)
 			break;
 		case 'h':
 			disp_usage();
+			break;
+		case 'n':
+			enc_nice = atoi(optarg);
+			if (enc_nice < 0 || enc_nice > 19)
+				disp_usage();
 			break;
 		case 't':
 			nr_workers = atoi(optarg);
