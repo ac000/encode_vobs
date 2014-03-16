@@ -58,7 +58,7 @@ static void create_theora(const char *infile, const char *outfile)
 static void create_webm(const char *infile, const char *outfile)
 {
 	execlp("ffmpeg", "ffmpeg", "-i", infile, "-filter:v", "yadif", "-b:v",
-			"1200k", "-ab", "112k", outfile, (char *)NULL);
+			"1200k", "-q:a", "3", outfile, (char *)NULL);
 }
 
 static void create_mkv(const char *infile, const char *outfile)
