@@ -38,9 +38,11 @@
 #define ENC_NICE	enc_nice
 #define POST_CMD	post_cmd
 
+static volatile sig_atomic_t files_in_progress;
+static volatile sig_atomic_t files_processed;
+static volatile sig_atomic_t file_processed;
+
 static int enc_nice = 10;
-static int files_to_process;
-static int files_processed;
 static int nr_workers;
 static char *post_cmd;
 
@@ -116,6 +118,9 @@ static void reaper(int signo)
 		for (i = 0; i < NR_WORKERS; i++) {
 			if (processing[i].pid == pid) {
 				processing[i].pid = PROCESS_EXITED;
+				files_in_progress--;
+				files_processed++;
+				file_processed = 1;
 				break;
 			}
 		}
@@ -143,9 +148,9 @@ static void do_processed(void)
 
 			processing[i].pid = -1;
 			processing[i].file[0] = '\0';
-			files_processed++;
 		}
 	}
+	file_processed = 0;
 }
 
 static void process_file(const char *file, const char *profile)
@@ -200,7 +205,7 @@ int main(int argc, char **argv)
 {
 	int i;
 	int opt;
-	int files_in_progress = 0;
+	int files_to_process;
 	struct sigaction sa;
 	const char *profile = '\0';
 
@@ -266,21 +271,16 @@ int main(int argc, char **argv)
 
 	files_to_process = argc - optind;
 	i = optind;
-	for (;;) {
-		if (i == argc) {
-			while (files_processed < files_to_process) {
-				pause();
-				do_processed();
-			}
-			break;
-		} else if (files_in_progress == NR_WORKERS) {
+	while (files_processed < files_to_process) {
+		if (files_in_progress < NR_WORKERS && i < argc) {
+			process_file(argv[i], profile);
+			files_in_progress++;
+			i++;
+		} else {
 			pause();
-			files_in_progress--;
-			do_processed();
 		}
-		process_file(argv[i], profile);
-		i++;
-		files_in_progress++;
+		if (file_processed)
+			do_processed();
 	}
 
 	free(processing);
