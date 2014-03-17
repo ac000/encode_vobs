@@ -32,15 +32,17 @@
 			tm->tm_hour, tm->tm_min, tm->tm_sec, ##__VA_ARGS__); \
 	} while (0)
 
-#define NR_WORKERS	nr_workers
 #define PROCESS_EXITED	-2
 
+#define NR_WORKERS	nr_workers
 #define ENC_NICE	enc_nice
+#define POST_CMD	post_cmd
 
 static int enc_nice = 10;
 static int files_to_process;
 static int files_processed;
 static int nr_workers;
+static char *post_cmd;
 
 struct processing {
 	pid_t pid;
@@ -90,10 +92,17 @@ static void create_mkv(const char *infile, const char *outfile)
 static void disp_usage(void)
 {
 	fprintf(stderr, "Usage: encode_vobs -P <theora|webm|mkv> [-t tasks] "
-			"[-n nice] file1 ...\n\n");
-	fprintf(stderr, "nice is the priority to run the encode processes "
-			"at.\nIt should be a value between 0 and 19. It "
-			"defaults to 10.\n");
+			"[-n nice]\n       [-e post_process_exec_command] "
+			"<file1 ...>\n\n");
+	fprintf(stderr, "tasks is how many files to process at a time. It "
+			"defaults to nr cores - 1.\n\n"
+			"nice is the priority to run the encode processes "
+			"at. It should be a value\nbetween 0 and 19. It "
+			"defaults to 10.\n\n"
+			"post_process_exec_command is the full path to an "
+			"executable that will be\ncalled after each processed "
+			"file, it will be passed the full path of the\n"
+			"newly processed file as argv[1].\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -113,6 +122,15 @@ static void reaper(int signo)
 	}
 }
 
+static void do_post_cmd(const char *file)
+{
+	pid_t pid;
+
+	pid = fork();
+	if (pid == 0)
+		execl(POST_CMD, POST_CMD, file, (char *)NULL);
+}
+
 static void do_processed(void)
 {
 	int i;
@@ -120,6 +138,9 @@ static void do_processed(void)
 	for (i = 0; i < NR_WORKERS; i++) {
 		if (processing[i].pid == PROCESS_EXITED) {
 			loginfo("Finished   : %s\n", processing[i].file);
+			if (POST_CMD)
+				do_post_cmd(processing[i].file);
+
 			processing[i].pid = -1;
 			processing[i].file[0] = '\0';
 			files_processed++;
@@ -183,8 +204,24 @@ int main(int argc, char **argv)
 	struct sigaction sa;
 	const char *profile = '\0';
 
-	while ((opt = getopt(argc, argv, "P:hn:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "e:P:hn:t:")) != -1) {
 		switch (opt) {
+		case 'e': {
+			struct stat st;
+			int err;
+
+			if (!optarg)
+				disp_usage();
+
+			err = stat(optarg, &st);
+			if (!err) {
+				post_cmd = optarg;
+			} else {
+				fprintf(stderr, "Cannot stat %s\n", optarg);
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
 		case 'P':
 			if (strcmp(optarg, "theora") != 0 &&
 			    strcmp(optarg, "webm") != 0 &&
