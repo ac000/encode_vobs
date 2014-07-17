@@ -215,9 +215,6 @@ int main(int argc, char **argv)
 			struct stat st;
 			int err;
 
-			if (!optarg)
-				disp_usage();
-
 			err = stat(optarg, &st);
 			if (!err) {
 				post_cmd = optarg;
@@ -246,6 +243,8 @@ int main(int argc, char **argv)
 		case 't':
 			nr_workers = atoi(optarg);
 			break;
+		default:
+			disp_usage();
 		}
 	}
 	if (optind >= argc || !profile)
