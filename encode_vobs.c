@@ -45,6 +45,7 @@ static volatile sig_atomic_t file_processed;
 static int enc_nice = 10;
 static int nr_workers;
 static char *post_cmd;
+static char *audio_track_id = "1";
 
 struct processing {
 	pid_t pid;
@@ -89,14 +90,14 @@ static void create_mkv(const char *infile, const char *outfile)
 
 	loginfo("Doing mkvmerge (%s)\n", outfile);
 	execlp("mkvmerge", "mkvmerge", "-q", "-o", outfile, "-A", webm, "-D",
-			"-a", "1", infile, (char *)NULL);
+			"-a", audio_track_id, infile, (char *)NULL);
 }
 
 static void disp_usage(void)
 {
-	fprintf(stderr, "Usage: encode_vobs -P <theora|webm|mkv> [-t tasks] "
-			"[-n nice]\n       [-e post_process_exec_command] "
-			"<file1 ...>\n\n");
+	fprintf(stderr, "Usage: encode_vobs -P <theora|webm|mkv> "
+			"[-a audio track ID]\n       [-t tasks] [-n nice] "
+			"[-e post_process_exec_command] <file1 ...>\n\n");
 	fprintf(stderr, "tasks is how many files to process at a time. It "
 			"defaults to nr cores - 1.\n\n"
 			"nice is the priority to run the encode processes "
@@ -105,7 +106,9 @@ static void disp_usage(void)
 			"post_process_exec_command is the full path to an "
 			"executable that will be\ncalled after each processed "
 			"file, it will be passed the full path of the\n"
-			"newly processed file as argv[1].\n");
+			"newly processed file as argv[1].\n\n"
+			"audio track ID is the audio track to use from the "
+			"VOB (only for MKV\nprofile). Defaults to 1.\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -210,8 +213,11 @@ int main(int argc, char **argv)
 	struct sigaction sa;
 	const char *profile = '\0';
 
-	while ((opt = getopt(argc, argv, "e:P:hn:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "a:e:P:hn:t:")) != -1) {
 		switch (opt) {
+		case 'a':
+			audio_track_id = optarg;
+			break;
 		case 'e': {
 			struct stat st;
 			int err;

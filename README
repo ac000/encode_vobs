@@ -18,7 +18,8 @@ for Matroska.
 
 When using the mkv profile, it expects a VOB containing the video as the
 first track and the audio you want as the second (extra audio tracks will be
-ignored).
+ignored). You can optionally pass -a <audio ID> to specify which audio track
+you wish to use from the VOB.
 
 You can also optionally pass the full path to an executable that you would
 like to have run after every file is encoded with the -e option. This can be
