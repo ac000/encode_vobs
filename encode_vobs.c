@@ -38,6 +38,11 @@
 #define ENC_NICE	enc_nice
 #define POST_CMD	post_cmd
 
+#define TXT_FMT_BOLD	"\033[1m"
+#define TXT_FMT_END	"\033[0m"
+
+#define LOG_MSG_FIN	TXT_FMT_BOLD"Finished   : "TXT_FMT_END"%s\n"
+
 static volatile sig_atomic_t files_in_progress;
 static volatile sig_atomic_t files_processed;
 static volatile sig_atomic_t file_processed;
@@ -146,7 +151,7 @@ static void do_processed(void)
 
 	for (i = 0; i < NR_WORKERS; i++) {
 		if (processing[i].pid == PROCESS_EXITED) {
-			loginfo("Finished   : %s\n", processing[i].file);
+			loginfo(LOG_MSG_FIN, processing[i].file);
 			if (POST_CMD)
 				do_post_cmd(processing[i].file);
 
