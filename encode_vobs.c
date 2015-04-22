@@ -228,12 +228,11 @@ int main(int argc, char **argv)
 			int err;
 
 			err = stat(optarg, &st);
-			if (!err) {
-				post_cmd = optarg;
-			} else {
+			if (err) {
 				fprintf(stderr, "Cannot stat %s\n", optarg);
 				exit(EXIT_FAILURE);
 			}
+			post_cmd = optarg;
 			break;
 		}
 		case 'P':
