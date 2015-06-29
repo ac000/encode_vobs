@@ -58,13 +58,6 @@ struct processing {
 };
 static struct processing *processing;
 
-static void create_theora(const char *infile, const char *outfile)
-{
-	execlp("ffmpeg2theora", "ffmpeg2theora", "-o", outfile,
-			"--no-skeleton", "-v", "7", "-a", "3", infile,
-			(char *)NULL);
-}
-
 static void create_webm(const char *infile, const char *outfile)
 {
 	execlp("ffmpeg", "ffmpeg", "-i", infile, "-speed", "3", "-filter:v",
@@ -100,7 +93,7 @@ static void create_mkv(const char *infile, const char *outfile)
 
 static void disp_usage(void)
 {
-	fprintf(stderr, "Usage: encode_vobs -P <theora|webm|mkv> "
+	fprintf(stderr, "Usage: encode_vobs -P <webm|mkv> "
 			"[-a audio track ID]\n       [-t tasks] [-n nice] "
 			"[-e post_process_exec_command] <file1 ...>\n\n");
 	fprintf(stderr, "tasks is how many files to process at a time. It "
@@ -172,9 +165,7 @@ static void process_file(const char *file, const char *profile)
 	struct stat st;
 
 	strncpy(outfile, file, strlen(file) - 3);
-	if (strcmp(profile, "theora") == 0)
-		strcat(outfile, "ogv");
-	else if (strcmp(profile, "webm") == 0)
+	if (strcmp(profile, "webm") == 0)
 		strcat(outfile, "webm");
 	else
 		strcat(outfile, "mkv");
@@ -192,9 +183,7 @@ static void process_file(const char *file, const char *profile)
 		setpriority(PRIO_PROCESS, 0, ENC_NICE);
 		/* Send stderr to /dev/null */
 		dup2(fd, STDERR_FILENO);
-		if (strcmp(profile, "theora") == 0)
-			create_theora(file, outfile);
-		else if (strcmp(profile, "webm") == 0)
+		if (strcmp(profile, "webm") == 0)
 			create_webm(file, outfile);
 		else
 			create_mkv(file, outfile);
@@ -236,8 +225,7 @@ int main(int argc, char **argv)
 			break;
 		}
 		case 'P':
-			if (strcmp(optarg, "theora") != 0 &&
-			    strcmp(optarg, "webm") != 0 &&
+			if (strcmp(optarg, "webm") != 0 &&
 			    strcmp(optarg, "mkv") != 0)
 				disp_usage();
 			else
