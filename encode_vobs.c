@@ -1,7 +1,7 @@
 /*
  * encode_vobs.c - Simple job scheduler to encode vob dvd rips
  *
- * Copyright (C) 2012 - 2015	Andrew Clayton <andrew@digital-domain.net>
+ * Copyright (C) 2012 - 2016	Andrew Clayton <andrew@digital-domain.net>
  *
  * Released under the GNU General Public License version 2
  * See COPYING
@@ -60,9 +60,15 @@ static struct processing *processing;
 
 static void create_webm(const char *infile, const char *outfile)
 {
-	execlp("ffmpeg", "ffmpeg", "-i", infile, "-speed", "3", "-filter:v",
-			"yadif", "-crf", "10", "-b:v", "1200k", "-q:a", "5",
-			outfile, (char *)NULL);
+	execlp("ffmpeg", "ffmpeg",
+			 "-i", infile,
+			 "-speed", "3",
+			 "-filter:v", "yadif",
+			 "-crf", "10",
+			 "-c:v", "libvpx",
+			 "-b:v", "1200k",
+			 "-b:a", "160k",
+			 outfile, (char *)NULL);
 }
 
 static void create_mkv(const char *infile, const char *outfile)
