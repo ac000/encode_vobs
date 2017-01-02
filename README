@@ -2,7 +2,7 @@ encode_vobs
 ===========
 
 A simple job scheduler to encode DVD VOB files into WebM or Matroska
-(containing VP8 + AC3) format.
+(containing VP8 + AC3) format. Or you can supply a custom encode command.
 
 It creates nr cores - 1 (over-ridable with the -t option), ffmpeg processes
 at a time, running them at nice +10 (over-ridable with the -n option).
@@ -18,6 +18,11 @@ When using the mkv profile, it expects a VOB containing the video as the
 first track and the audio you want as the second (extra audio tracks will be
 ignored). You can optionally pass -a <audio ID> to specify which audio track
 you wish to use from the VOB.
+
+When using the custom profile it expects a -c argument specifying the encode
+command to use. It takes two place holders. %i for the input file and %o for
+the output file. e.g -c "ffmpeg -i %i %o.webm"
+Note that you should provide the file extension with %o
 
 You can also optionally pass the full path to an executable that you would
 like to have run after every file is encoded with the -e option. This can be

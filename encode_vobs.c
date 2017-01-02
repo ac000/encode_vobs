@@ -49,6 +49,7 @@ static volatile sig_atomic_t file_processed;
 
 static int enc_nice = 10;
 static int nr_workers;
+static char *custom_encoder_cmd;
 static char *post_cmd;
 static char *audio_track_id = "1";
 
@@ -57,6 +58,27 @@ struct processing {
 	char file[PATH_MAX];
 };
 static struct processing *processing;
+
+static void create_custom(char *cmd, const char *infile, const char *outfile)
+{
+	char *args[128];
+	char *tok;
+	char **next = args;
+
+	tok = strtok(cmd, " ");
+	while (tok) {
+		if (strcmp(tok, "%i") == 0)
+			*next++ = (char *)infile;
+		else if (strncmp(tok, "%o", 2) == 0)
+			*next++ = (char *)outfile;
+		else
+			*next++ = tok;
+		tok = strtok(NULL, " ");
+	}
+	*next = (char *)NULL;
+
+	execvp(args[0], args);
+}
 
 static void create_webm(const char *infile, const char *outfile)
 {
@@ -99,8 +121,10 @@ static void create_mkv(const char *infile, const char *outfile)
 
 static void disp_usage(void)
 {
-	fprintf(stderr, "Usage: encode_vobs -P <webm|mkv> "
-			"[-a audio track ID]\n       [-t tasks] [-n nice] "
+	fprintf(stderr, "Usage: encode_vobs -P <webm|mkv|custom> "
+			"[-c custom encoding command]\n"
+			"                   [-a audio track ID] [-t tasks] "
+		        "[-n nice]\n                   "
 			"[-e post_process_exec_command] <file1 ...>\n\n");
 	fprintf(stderr, "tasks is how many files to process at a time. It "
 			"defaults to nr cores - 1.\n\n"
@@ -112,7 +136,11 @@ static void disp_usage(void)
 			"file, it will be passed the full path of the\n"
 			"newly processed file as argv[1].\n\n"
 			"audio track ID is the audio track to use from the "
-			"VOB (only for MKV\nprofile). Defaults to 1.\n");
+			"VOB (only for MKV\nprofile). Defaults to 1.\n\n"
+			"The custom profile expects a -c argument specifying "
+			"the encode command to\nuse. It takes two place "
+			"holders. %%i for the input file and %%o for the "
+			"output\nfile. e.g -c \"ffmpeg -i %%i %%o.webm\"\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -171,10 +199,26 @@ static void process_file(const char *file, const char *profile)
 	struct stat st;
 
 	strncpy(outfile, file, strlen(file) - 3);
-	if (strcmp(profile, "webm") == 0)
+	if (strcmp(profile, "webm") == 0) {
 		strcat(outfile, "webm");
-	else
+	} else if (strcmp(profile, "mkv") == 0) {
 		strcat(outfile, "mkv");
+	} else {
+		char *ptr = strstr(custom_encoder_cmd, "%o");
+		size_t len = strlen(outfile);
+
+		ptr += 3;
+		while (*ptr != ' ' && *ptr != '\0') {
+			if (len + 1 == PATH_MAX) {
+				loginfo("ERROR: Filename '%s' too long.\n",
+						outfile);
+				loginfo("Skipping   : %s\n", file);
+				return;
+			}
+
+			outfile[len++] = *(ptr++);
+		}
+	}
 
 	ret = stat(outfile, &st);
 	if (ret == 0) {
@@ -189,10 +233,15 @@ static void process_file(const char *file, const char *profile)
 		setpriority(PRIO_PROCESS, 0, ENC_NICE);
 		/* Send stderr to /dev/null */
 		dup2(fd, STDERR_FILENO);
-		if (strcmp(profile, "webm") == 0)
+		if (strcmp(profile, "webm") == 0) {
 			create_webm(file, outfile);
-		else
+		} else if (strcmp(profile, "mkv") == 0){
 			create_mkv(file, outfile);
+		} else {
+			char *cmd = strdup(custom_encoder_cmd);
+
+			create_custom(cmd, file, outfile);
+		}
 	}
 	close(fd);
 
@@ -213,7 +262,7 @@ int main(int argc, char **argv)
 	struct sigaction sa;
 	const char *profile = '\0';
 
-	while ((opt = getopt(argc, argv, "a:e:P:hn:t:")) != -1) {
+	while ((opt = getopt(argc, argv, "a:e:P:c:hn:t:")) != -1) {
 		switch (opt) {
 		case 'a':
 			audio_track_id = optarg;
@@ -232,10 +281,15 @@ int main(int argc, char **argv)
 		}
 		case 'P':
 			if (strcmp(optarg, "webm") != 0 &&
-			    strcmp(optarg, "mkv") != 0)
+			    strcmp(optarg, "mkv") != 0 &&
+			    strcmp(optarg, "custom") != 0)
 				disp_usage();
 			else
 				profile = optarg;
+			break;
+		case 'c':
+			if (strcmp(profile, "custom") == 0)
+				custom_encoder_cmd = optarg;
 			break;
 		case 'h':
 			disp_usage();
@@ -252,10 +306,13 @@ int main(int argc, char **argv)
 			disp_usage();
 		}
 	}
-	if (optind >= argc || !profile)
+	if (optind >= argc || !profile ||
+	    (strcmp(profile, "custom") == 0 && !custom_encoder_cmd))
 		disp_usage();
 
 	loginfo("Using profile: %s\n", profile);
+	if (strcmp(profile, "custom") == 0)
+		loginfo("Using custom encode cmd: %s\n", custom_encoder_cmd);
 
 	sigemptyset(&sa.sa_mask);
 	sa.sa_handler = reaper;
