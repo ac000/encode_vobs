@@ -43,6 +43,10 @@
 
 #define LOG_MSG_FIN	TXT_FMT_BOLD"Finished   : "TXT_FMT_END"%s\n"
 
+enum { FMT_NONE = 0, FMT_WEBM, FMT_MKV, FMT_CUSTOM };
+
+static const char *profiles[] = { "None", "WebM", "MKV", "Custom" };
+
 static volatile sig_atomic_t files_in_progress;
 static volatile sig_atomic_t files_processed;
 static volatile sig_atomic_t file_processed;
@@ -189,7 +193,7 @@ static void do_processed(void)
 	file_processed = 0;
 }
 
-static void process_file(const char *file, const char *profile)
+static void process_file(const char *file, int profile)
 {
 	pid_t pid;
 	int fd;
@@ -199,9 +203,9 @@ static void process_file(const char *file, const char *profile)
 	struct stat st;
 
 	strncpy(outfile, file, strlen(file) - 3);
-	if (strcmp(profile, "webm") == 0) {
+	if (profile == FMT_WEBM) {
 		strcat(outfile, "webm");
-	} else if (strcmp(profile, "mkv") == 0) {
+	} else if (profile == FMT_MKV) {
 		strcat(outfile, "mkv");
 	} else {
 		char *ptr = strstr(custom_encoder_cmd, "%o");
@@ -233,9 +237,9 @@ static void process_file(const char *file, const char *profile)
 		setpriority(PRIO_PROCESS, 0, ENC_NICE);
 		/* Send stderr to /dev/null */
 		dup2(fd, STDERR_FILENO);
-		if (strcmp(profile, "webm") == 0) {
+		if (profile == FMT_WEBM) {
 			create_webm(file, outfile);
-		} else if (strcmp(profile, "mkv") == 0){
+		} else if (profile == FMT_MKV){
 			create_mkv(file, outfile);
 		} else {
 			char *cmd = strdup(custom_encoder_cmd);
@@ -260,7 +264,7 @@ int main(int argc, char **argv)
 	int opt;
 	int files_to_process;
 	struct sigaction sa;
-	const char *profile = '\0';
+	int profile = FMT_NONE;
 
 	while ((opt = getopt(argc, argv, "a:e:P:c:hn:t:")) != -1) {
 		switch (opt) {
@@ -280,15 +284,17 @@ int main(int argc, char **argv)
 			break;
 		}
 		case 'P':
-			if (strcmp(optarg, "webm") != 0 &&
-			    strcmp(optarg, "mkv") != 0 &&
-			    strcmp(optarg, "custom") != 0)
-				disp_usage();
+			if (strcmp(optarg, "webm") == 0)
+				profile = FMT_WEBM;
+			else if (strcmp(optarg, "mkv") == 0)
+				profile = FMT_MKV;
+			else if (strcmp(optarg, "custom") == 0)
+				profile = FMT_CUSTOM;
 			else
-				profile = optarg;
+				disp_usage();
 			break;
 		case 'c':
-			if (strcmp(profile, "custom") == 0)
+			if (profile == FMT_CUSTOM)
 				custom_encoder_cmd = optarg;
 			break;
 		case 'h':
@@ -306,12 +312,12 @@ int main(int argc, char **argv)
 			disp_usage();
 		}
 	}
-	if (optind >= argc || !profile ||
-	    (strcmp(profile, "custom") == 0 && !custom_encoder_cmd))
+	if (optind >= argc || profile == FMT_NONE ||
+	    (profile == FMT_CUSTOM && !custom_encoder_cmd))
 		disp_usage();
 
-	loginfo("Using profile: %s\n", profile);
-	if (strcmp(profile, "custom") == 0)
+	loginfo("Using profile: %s\n", profiles[profile]);
+	if (profile == FMT_CUSTOM)
 		loginfo("Using custom encode cmd: %s\n", custom_encoder_cmd);
 
 	sigemptyset(&sa.sa_mask);
