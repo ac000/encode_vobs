@@ -22,6 +22,7 @@
 #include <sys/resource.h>
 #include <sys/sysinfo.h>
 #include <signal.h>
+#include <termios.h>
 #include <limits.h>
 
 #define loginfo(fmt, ...) \
@@ -264,6 +265,7 @@ int main(int argc, char **argv)
 	int opt;
 	int files_to_process;
 	struct sigaction sa;
+	struct termios tp;
 	int profile = FMT_NONE;
 
 	while ((opt = getopt(argc, argv, "a:e:P:c:hn:t:")) != -1) {
@@ -316,6 +318,8 @@ int main(int argc, char **argv)
 	    (profile == FMT_CUSTOM && !custom_encoder_cmd))
 		disp_usage();
 
+	tcgetattr(STDIN_FILENO, &tp);
+
 	loginfo("Using profile: %s\n", profiles[profile]);
 	if (profile == FMT_CUSTOM)
 		loginfo("Using custom encode cmd: %s\n", custom_encoder_cmd);
@@ -351,5 +355,8 @@ int main(int argc, char **argv)
 	}
 
 	free(processing);
+	tp.c_lflag |= ECHO;
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &tp);
+
 	exit(EXIT_SUCCESS);
 }
