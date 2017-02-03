@@ -229,6 +229,8 @@ static void process_file(const char *file, int profile)
 	ret = stat(outfile, &st);
 	if (ret == 0) {
 		loginfo("File %s exists, skipping\n", outfile);
+		files_processed++;
+		files_in_progress--;
 		return;
 	}
 	loginfo("Processing : %s -> %s\n", file, outfile);
