@@ -150,7 +150,7 @@ static void disp_usage(void)
 	exit(EXIT_FAILURE);
 }
 
-static void reaper(int signo)
+static void reaper(__attribute__ ((unused)) int signo)
 {
 	int i;
 	pid_t pid;
