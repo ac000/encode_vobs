@@ -204,7 +204,8 @@ static void process_file(const char *file, int profile)
 	char outfile[PATH_MAX] = "\0";
 	struct stat st;
 
-	strncpy(outfile, file, strlen(file) - 3);
+	snprintf(outfile, sizeof(outfile), "%s", file);
+	outfile[strlen(outfile) - 3] = '\0';
 	if (profile == FMT_WEBM) {
 		strcat(outfile, "webm");
 	} else if (profile == FMT_MKV) {
