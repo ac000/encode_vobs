@@ -1,7 +1,7 @@
 /*
  * encode_vobs.c - Simple job scheduler to encode vob dvd rips
  *
- * Copyright (C) 	2012 - 2015, 2017
+ * Copyright (C) 	2012 - 2015, 2017 - 2018
  * 			Andrew Clayton <andrew@digital-domain.net>
  *
  * Released under the GNU General Public License version 2
